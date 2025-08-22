@@ -1,0 +1,80 @@
+# Titanic Survival Prediction in Google Colab
+
+# --- STEP 1: Import Necessary Libraries ---
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# --- STEP 2: Load the Dataset ---
+# Make sure the Titanic-Dataset.csv file is uploaded in Colab
+data = pd.read_csv("/content/Titanic-Dataset.csv")
+print("Dataset loaded successfully! Shape:", data.shape)
+print(data.head())
+
+# --- STEP 3: Check for Missing Values ---
+print("\nMissing values in dataset:")
+print(data.isnull().sum())
+
+# --- STEP 4: Handle Missing Data ---
+# Age: Fill missing ages with median (since it's numeric & skewed)
+# Embarked: Fill with most frequent value (mode)
+data.fillna({
+    'Age': data['Age'].median(),
+    'Embarked': data['Embarked'].mode()[0]
+}, inplace=True)
+
+# Cabin has too many missing values -> drop it
+data.drop(['Cabin'], axis=1, inplace=True)
+
+# --- STEP 5: Drop Irrelevant Columns ---
+# PassengerId, Name, and Ticket are not useful for prediction
+data.drop(['PassengerId', 'Name', 'Ticket'], axis=1, inplace=True)
+
+# --- STEP 6: Encode Categorical Columns ---
+le = LabelEncoder()
+data['Sex'] = le.fit_transform(data['Sex'])
+data['Embarked'] = le.fit_transform(data['Embarked'])
+
+# --- STEP 7: Define Features (X) and Target (y) ---
+X = data.drop('Survived', axis=1)
+y = data['Survived']
+
+# --- STEP 8: Split Data into Training and Test Sets ---
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+print("\nTraining set size:", X_train.shape)
+print("Test set size:", X_test.shape)
+
+# --- STEP 9: Train Logistic Regression Model ---
+model = LogisticRegression(max_iter=200)
+model.fit(X_train, y_train)
+print("\nModel training completed.")
+
+# --- STEP 10: Make Predictions & Evaluate ---
+y_pred = model.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+print("\nModel Accuracy:", round(accuracy * 100, 2), "%")
+
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# --- STEP 11: Visualize Correlation Between Features ---
+plt.figure(figsize=(8,6))
+sns.heatmap(data.corr(numeric_only=True), annot=True, cmap='coolwarm')
+plt.title("Feature Correlation Heatmap")
+plt.show()
+
+# --- STEP 12: Test with a New Passenger Example ---
+# Example: 3rd class, male, 22 yrs, no siblings/spouse, no parents/children, fare=7.25, embarked from 'S'
+new_passenger = np.array([[3, 1, 22, 0, 0, 7.25, le.transform(['S'])[0]]]).reshape(1, -1)
+prediction = model.predict(new_passenger)
+print("\nPrediction for new passenger (1=Survived, 0=Did not survive):", prediction[0])
